@@ -1,2 +1,6 @@
 # Ignore all files in the data folder
 data/*
+.DS_Store
+*.ipynb_checkpoints
+*.pyc
+__pycache__/
