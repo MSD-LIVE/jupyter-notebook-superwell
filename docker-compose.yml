@@ -1,5 +1,6 @@
-# This docker compose file can be used to start up a statemodify notebook locally
-# for testing.
+# Docker compose for local testing of the Superwell notebook.
+# Usage: docker compose up --build
+# Then open the URL printed in the terminal output.
 services:
   notebook:
     container_name: superwell-notebook
@@ -10,6 +11,6 @@ services:
     ports:
       - "8888:8888"
     volumes:
-      - ./data:/home/jovyan/data
-      - ./data:/data
       - ./notebooks:/home/jovyan/notebooks
+      - ./inputs:/home/jovyan/inputs:ro
+      - ./outputs:/home/jovyan/outputs
