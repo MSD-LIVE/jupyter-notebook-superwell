@@ -1,103 +1,65 @@
-# MSD-LIVE BLANK Notebook
+# Superwell — MSD-LIVE Jupyter Notebook
 
-This repo contains the Dockerfile to build the notebook image as well as the notebooks
-used in the MSD-LIVE deployment. It will rebuild the image whenever changes are pushed to the main and dev branches.
+Interactive Jupyter notebook for exploring the **Superwell** global groundwater cost and supply model, hosted on MSD-LIVE.
 
-**The data folder is too big, so we are not checking this into github. You will have
-to pull from s3 (instructions below) if you want to test locally**
+**Live notebook:** [superwell.msdlive.org](https://superwell.msdlive.org)  
+**Superwell source:** [github.com/JGCRI/superwell](https://github.com/JGCRI/superwell)
 
-## Initalizing this project notebook repository:
-1. Create a new git repo
-   1. Repo must be in the MSD-LIVE git org
-   1. Select the [template-project-jupyter-notebook](https://github.com/MSD-LIVE/template-project-jupyter-notebook) as the repository template
-   1. The repo name must start with ``jupyter-notebook-``. The domain of this notebook when running on MSD-LIVE's jupyter services will be whatever comes after (i.e. the [cerf](https://github.com/MSD-LIVE/jupyter-notebook-cerf) repo is named jupyter-notebook-cerf and the URL to it's notebooks hosted by MSD-LIVE is `https://cerf.msdlive.org` )
-   1. The repo must be public. 
-1. Find/replace `<<blank>>` in docker-compose and `BLANK` in this readme with your repo name
-1. Set PROJECT environment var in git:
-   1. After the repo has been created from the github UI go to Settings, from left click on Secrets and variables and select Actions
-   1. Click on the Variables tab, click the green New repository variable button
-   1. For Name enter `PROJECT` and value should be a project in MSD-LIVE like IM3 or GCIMS (the notebook will fail to launch from MSD-LIVE's services if not set)
-1. You may need to modify the `.gitignore` if your notebooks include config files or images.
+## Key Publications
 
+1. Niazi, H., Ferencz, S. B., Graham, N. T., Yoon, J., Wild, T. B., Hejazi, M., Watson, D. J., & Vernon, C. R. (2025). [Long-term hydro-economic analysis tool for evaluating global groundwater cost and supply: Superwell v1.1](https://doi.org/10.5194/gmd-18-1737-2025). _Geoscientific Model Development, 18_(5), 1737-1767. [https://doi.org/10.5194/gmd-18-1737-2025](https://doi.org/10.5194/gmd-18-1737-2025)
 
-## Developing the project notebook container:
-1. Your Dockerfile needs to:
-   1. Extend from our base images:
-      ```
-      FROM ghcr.io/msd-live/jupyter/datascience-notebook:latest 
-      ```
-   1. Install any pre-requisites needed for your project. For example,
-      ```
-      USER root
-      RUN git clone --depth=1 --branch=main https://github.com/IMMM-SFA/msd_uncertainty_ebook.git msd_uncertainty_ebook
-      RUN cd msd_uncertainty_ebook && pip install .
-      ```
-   1. Finally, copy in the notebooks and any other files needed in order to run. When the container starts everything in the /home/jovyan folder will be copied to the current user's home folder
-      ```
-      COPY notebooks /home/jovyan/notebooks
-      ```
-1. Containers extending one of these base images will have a `DATA_DIR` environment variable set and the value will be the path to the read-only staged input data, or `/data`. There will also be a symbolic link created in the user's home folder named 'data' that points to `/data` when the container starts. 
-1. Notebook implementations should look for the DATA_DIR environment variable and if set use that path as the input data used instead of downloading it.  For an example of this see [this example](https://github.com/MSD-LIVE/jupyter-notebook-cerf/blob/f5e6753ef524f5b8bfd64e9dac89c3c59a1aa457/notebooks/quickstarter.ipynb#L121)
-1. Some notebook libraries expect data to be located within the package. For this, feel free to add a symbolic link from `/data` to the package via the Dockerfile. This will work if the package only needs read access to the data. Here is an example of doing that:
-   ```
-   RUN rm -rf /opt/conda/lib/python3.11/site-packages/cerf/data
-   RUN ln -s /data /opt/conda/lib/python3.11/site-packages/cerf/data
-   ```
-1. If you need to edit certain data/subset of data, contact admin@msdlive.org, if you need help with this. 
+2. Niazi, H., Wild, T. B., Turner, S. W. D., Graham, N. T., Hejazi, M., Msangi, S., Kim, S., Lamontagne, J. R., & Zhao, M. (2024). [Global peak water limit of future groundwater withdrawals](https://doi.org/10.1038/s41893-024-01306-w). *Nature Sustainability*, 7(4), 413–422. [https://doi.org/10.1038/s41893-024-01306-w](https://doi.org/10.1038/s41893-024-01306-w)
 
-## Project notebook Docker Images 
-1. Your repo's dev branch builds the image and tags it with 'dev', the main branch tags the image with 'latest'
-1. After the initial build go to MSD-LIVE's [packages in github](https://github.com/orgs/MSD-LIVE/packages) click on your package, click on settings to the right, scroll to the bottom of the settings page and make sure the 'package visibility' is set to public (the notebook will fail to launch from MSD-LIVE's services if not set)
+## Repository Structure
 
+```
+├── Dockerfile                  # Container image definition
+├── docker-compose.yml          # Local testing configuration
+├── inputs/                     # Bundled input data (read-only at runtime)
+├── notebooks/
+│   ├── requirements.txt
+│   └── superwell_demo.ipynb    # Main demo notebook
+└── outputs/                    # Pre-computed sample outputs
+```
 
-## Notebook customizations
+**Note:** All input data is bundled in `inputs/` — no S3 downloads or git clones are needed. 
 
-Here are some ways to add specific behaviors for notebook containers. Note these are advanced use cases and not necessary for most deployments.
+## Testing Locally with Docker
 
-1. Project notebook deployments can include a plugin to implement custom behaviors such as copying the input folder to the user's home folder because it cannot be read-only. [Here](https://github.com/MSD-LIVE/jupyter-notebook-statemodify) is an exmple of this behavior but is essentially these steps:
-   1. Dockerfile needs to copy in and install the extension:
-   ```
-   COPY msdlive_hooks /srv/jupyter/extensions/msdlive_hooks
-   RUN pip install /srv/jupyter/extensions/msdlive_hooks
-   ```
-   1. [setup.py](https://github.com/MSD-LIVE/jupyter-notebook-statemodify/blob/main/msdlive_hooks/setup.py) uses entry_points so this plugin is discoverable to MSD-LIVE's
-   1. [The implementation](https://github.com/MSD-LIVE/jupyter-notebook-statemodify/blob/main/msdlive_hooks/msdlive_hooks/activate.py) removes the 'data' symlink from the user's home and and copies it in from /data instead
-1. Deployments can include a service to run within the notebook container. See [this](https://github.com/MSD-LIVE/jupyter-notebook-rgcam) example of how a database (basex) is started via the container's entry point.
-1. Deployments can include a service proxied by Jupyter in order for it to have authenticated web access. See proxy [docs here](https://jupyter-server-proxy.readthedocs.io/en/latest/index.html) and MSD-LIVE notes about it's use [here](https://github.com/MSD-LIVE/base-jupyter-notebook/blob/main/jupyter-server-proxy/README.md)
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
+### Steps
 
+1. **Open Docker Desktop** — make sure the Docker engine is running (you'll see a green indicator in the bottom-left of Docker Desktop).
 
-
-## Testing the notebook locally
-
-1. Get the data
+2. **Open a terminal** in the repo root and build + start the container:
    ```bash
-   # make sure you are in the jupyter-notebook-<<blank>> folder
-   mkdir data
-   cd data
+   cd jupyter-notebook-superwell
+   docker compose up --build
    ```
-   copy data into the data dir from data source. for example,
-   
-   ```
-   aws s3 cp s3://<<blank>>-notebook-bucket/data . --recursive
-   ```
-   or
-   
-   ```
-   cp <path to source of data> .
-   ```
+   The first build takes a few minutes (downloads the base image and installs dependencies). Subsequent runs are fast due to caching.
 
-3. Start the notebook via docker compose
+3. **Open the notebook** — look for a URL in the terminal output like:
+   ```
+   http://127.0.0.1:8888/lab?token=abc123...
+   ```
+   Copy-paste that full URL (including the token) into your browser.
+
+4. **Navigate** to `notebooks/superwell_demo.ipynb` and run all cells.
+
+5. **Stop the container** — press `Ctrl+C` in the terminal, or run:
    ```bash
-   # make sure you are in the jupyter-notebook-<<blank>> folder
-   cd ..
-   docker compose up
+   docker compose down
    ```
 
-4. Access the localhost url that is on the stdout of docker compose up command.
+### Troubleshooting
+- **"Cannot connect to the Docker daemon"** — Open Docker Desktop and wait for it to fully start.
+- **Port conflict on 8888** — Change the port in `docker-compose.yml`: `"9999:8888"` then access via `http://127.0.0.1:9999/...`
+- **Editing notebooks** — Changes to files in `notebooks/` are live-mounted, so edits in the browser are saved to your local files. `inputs/` is read-only.
 
-
-## Adding this Project Notebook to MSD-LIVE's Notebook Services:
+## MSD-LIVE Deployment Notes
 1. An MSD-LIVE developer will have to follow [the steps here](https://github.com/MSD-LIVE/jupyter-stacks/blob/main/MASTER_README.md) to add this as a new project notebook deployment (optionally to dev) in the prod config file. 
 1. Once added, there will be an s3 bucket that this notebook's input data will need to be uploaded to. The folder uploaded to the bucket must be named 'data'. 
 1. Data in the s3 bucket gets populated in one of these ways:
