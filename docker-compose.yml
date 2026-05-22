@@ -12,5 +12,5 @@ services:
       - "8888:8888"
     volumes:
       - ./notebooks:/home/jovyan/notebooks
-      - ./inputs:/home/jovyan/inputs:ro
+      - ./inputs:/home/jovyan/inputs
       - ./outputs:/home/jovyan/outputs
